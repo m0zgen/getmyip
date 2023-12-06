@@ -1,38 +1,77 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 	"strings"
+	"time"
 )
 
-func getIP(r *http.Request) string {
-	// Check X-Real-IP header
-	if xRealIP := r.Header.Get("X-Real-IP"); xRealIP != "" {
-		return xRealIP
+var enableLogging bool
+
+const logFileName = "client_ips.log"
+
+func logIP(ip string) {
+
+	// If flag -log passed
+	if !enableLogging {
+		return
 	}
+
+	// Create or open log file
+	file, err := os.OpenFile(logFileName, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	if err != nil {
+		fmt.Println("Log file open error:", err)
+		return
+	}
+	defer file.Close()
+
+	// Get current time with time format
+	currentTime := time.Now().Format("2006-01-02 15:04:05")
+
+	// Record time and IP in to log
+	logEntry := fmt.Sprintf("%s - %s\n", currentTime, ip)
+	_, err = file.WriteString(logEntry)
+	if err != nil {
+		fmt.Println("Error writing to log file:", err)
+	}
+}
+
+func getIP(r *http.Request) string {
+
+	if cfConnectiongIP := r.Header.Get("Cf-Connecting-Ip"); cfConnectiongIP != "" {
+		//fmt.Println("Cf-Connecting-Ip:")
+		return cfConnectiongIP
+	}
+
 	// Check X-Forwarder header
 	if xForwardedFor := r.Header.Get("X-Forwarded-For"); xForwardedFor != "" {
-		// Если заголовок X-Forwarded-For присутствует, используем первый IP-адрес в списке
+		// If X-Forwarded-For exists, will use first IP-address from addresses list
+		//fmt.Println("X-Forwarded-For:")
 		return strings.Split(xForwardedFor, ",")[0]
 		// Another method through parse:
 		//fmt.Println(net.ParseIP(xForwardedFor))
 	}
 
-	if cfConnectiongIP := r.Header.Get("Cf-Connecting-Ip"); cfConnectiongIP != "" {
-		return cfConnectiongIP
+	// Check X-Real-IP header
+	if xRealIP := r.Header.Get("X-Real-IP"); xRealIP != "" {
+		//fmt.Println("X-Real-IP:")
+		return xRealIP
 	}
 
-	// Если заголовок отсутствует, используем RemoteAddr
+	// If header does not exist, use RemoteAddr
 	ip := strings.Split(r.RemoteAddr, ":")[0]
+	//fmt.Println("Remote addr:")
 	return ip
 }
 
 func getServerIP() string {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
-		return "Не удалось определить IP сервера"
+		return "Can't determine server IP address"
 	}
 
 	// Используем первый доступный IP-адрес
@@ -44,7 +83,7 @@ func getServerIP() string {
 		}
 	}
 
-	return "IP сервера не найден"
+	return "Server IP does not found"
 }
 
 func handleRequest(w http.ResponseWriter, r *http.Request) {
@@ -52,28 +91,34 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 	ip := getIP(r)
 
 	// Выводим IP-адрес в консоль сервера
-	fmt.Printf("IP клиента: %s\n", ip)
+	fmt.Printf("Client IP: %s\n", ip)
 
 	// Отправляем IP-адрес обратно клиенту
 	fmt.Fprintf(w, "%s", ip)
+
+	logIP(ip)
 }
 
 func main() {
+
+	port := flag.Int("port", 8080, "Port for server")
+	flag.BoolVar(&enableLogging, "log", false, "Enable IP logging")
+	flag.Parse()
+
 	// Определяем обработчик запросов
 	http.HandleFunc("/", handleRequest)
 
 	// Получаем и выводим IP-адрес сервера
 	serverIP := getServerIP()
-	fmt.Printf("IP сервера: %s\n", serverIP)
+	fmt.Printf("Server IP: %s\n", serverIP)
 
-	// Запускаем сервер на порту 8080
-	port := 8080
-	addr := fmt.Sprintf(":%d", port)
+	// Запускаем сервер на flag порту 8080
+	addr := fmt.Sprintf(":%d", *port)
 
-	fmt.Printf("Сервер запущен на http://%s%s\n", serverIP, addr)
+	fmt.Printf("Server run on http://%s%s\n", serverIP, addr)
 
 	err := http.ListenAndServe(addr, nil)
 	if err != nil {
-		fmt.Println("Ошибка при запуске сервера:", err)
+		fmt.Println("Start server error:", err)
 	}
 }
