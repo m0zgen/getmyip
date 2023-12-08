@@ -115,7 +115,7 @@ isRunning() {
         echo "Service $_APP_NAME is running"
         echo "Check it: curl -s http://$SERVER_IP:8080"
         echo  "Service installed to $_DESTINATION. Enjoy!. Bye!"
-        exot 0
+        exit 0
     fi
 }
 
