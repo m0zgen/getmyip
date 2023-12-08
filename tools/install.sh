@@ -129,3 +129,5 @@ isUserExists() {
     fi
 }
 
+# Main
+isUserExists
