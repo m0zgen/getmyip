@@ -45,6 +45,13 @@ createUser() {
 # Copy binary from build to _DESTINATION
 copyBinary() {
     cp -f $SCRIPT_PATH/builds/$_APP_NAME $_DESTINATION/
+    chown -R $_APP_USER_NAME:$_APP_USER_NAME $_DESTINATION
+}
+
+# Touch client_ips.log to _DESTINATION and set permissions for _APP_USER_NAME user
+touchLog() {
+    touch $_DESTINATION/client_ips.log
+    chown $_APP_USER_NAME:$_APP_USER_NAME $_DESTINATION/client_ips.log
 }
 
 # Set pcap capabilities o _DESTINATION and binary
@@ -70,7 +77,7 @@ Type=simple
 User=$_APP_USER_NAME
 Group=$_APP_USER_NAME
 WorkingDirectory=$_DESTINATION
-ExecStart=$_DESTINATION/$_APP_NAME
+ExecStart=$_DESTINATION/$_APP_NAME -log
 ExecStop=/usr/bin/kill -s TERM ${MAINPID}
 Restart=on-failure
 RestartSec=5s
