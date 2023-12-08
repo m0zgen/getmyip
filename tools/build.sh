@@ -1,5 +1,5 @@
 #!/bin/bash
-# Cretaed by Yevgeniy Gonvharov, https://sys-adm.in
+# Cretaed by Yevgeniy Gonvharov, https://lab.sys-adm.in
 
 # Envs
 # ---------------------------------------------------\
